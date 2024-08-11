@@ -1,0 +1,525 @@
+Imports NetFwTypeLib
+Imports System.Diagnostics
+Imports System.Net.NetworkInformation
+Imports System.Runtime.InteropServices
+Imports System.Security.Principal
+Public Class Form1
+    Public Const WM_NCLBUTTONDOWN As Integer = &HA1
+    Public Const HTCAPTION As Integer = &H2
+    <DllImport("User32.dll")>
+    Public Shared Function ReleaseCapture() As Boolean
+    End Function
+    <DllImport("User32.dll")>
+    Public Shared Function SendMessage(hWnd As IntPtr, Msg As Integer, wParam As Integer, lParam As Integer) As Integer
+    End Function
+    Private Sub Form1_MouseDown(sender As Object, e As MouseEventArgs) Handles MyBase.MouseDown
+        If e.Button = MouseButtons.Left Then
+            ReleaseCapture()
+            SendMessage(Handle, WM_NCLBUTTONDOWN, HTCAPTION, 0)
+        End If
+    End Sub
+    Private Sub Button2_Click(sender As Object, e As EventArgs) Handles Button2.Click
+        OpenFileDialog1.ShowDialog()
+    End Sub
+    Private Sub OpenFileDialog1_FileOk(sender As Object, e As System.ComponentModel.CancelEventArgs) Handles OpenFileDialog1.FileOk
+        TextBox1.Text = OpenFileDialog1.FileName.ToString
+    End Sub
+    Private Sub Button3_Click(sender As Object, e As EventArgs) Handles Button3.Click
+        If TextBox1.Text = " << * Please Select Your cod.exe *" Then
+            MessageBox.Show("You have not set your cod.exe path!")
+        Else
+            If Button3.Text = "START FENCING" Then
+                Button3.Text = "STOP FENCING"
+                Button3.BackColor = Color.Red
+
+                Try
+                    AddOutboundRule()
+                Catch ex As Exception
+                    MessageBox.Show(ErrorToString)
+                End Try
+            Else
+                If Button3.Text = "STOP FENCING" Then
+                    Button3.Text = "START FENCING"
+                    Button3.BackColor = Color.Green
+                    RemoveOutboundRule("Warzone Geo Fence")
+                End If
+
+            End If
+        End If
+    End Sub
+    Private Sub AddOutboundRule()
+        Dim ruleType As Type = Type.GetTypeFromProgID("HNetCfg.FWRule")
+        Dim outboundRule As INetFwRule = DirectCast(Activator.CreateInstance(ruleType), INetFwRule)
+        Dim ipAddresses As String = String.Join(",", ListBox1.Items.Cast(Of String)())
+        outboundRule.Name = "Warzone Geo Fence"
+        outboundRule.Description = "The Best Warzone Geo Fence 2024"
+        outboundRule.Protocol = NET_FW_IP_PROTOCOL_.NET_FW_IP_PROTOCOL_TCP
+        outboundRule.RemoteAddresses = ipAddresses
+        outboundRule.Direction = NET_FW_RULE_DIRECTION_.NET_FW_RULE_DIR_OUT
+        outboundRule.Enabled = True
+        outboundRule.Action = NET_FW_ACTION_.NET_FW_ACTION_BLOCK
+        outboundRule.ApplicationName = TextBox1.Text
+        Dim policyType As Type = Type.GetTypeFromProgID("HNetCfg.FwPolicy2")
+        Dim firewallPolicy As INetFwPolicy2 = DirectCast(Activator.CreateInstance(policyType), INetFwPolicy2)
+
+        firewallPolicy.Rules.Add(outboundRule)
+    End Sub
+    Private Sub ResetFirewall()
+        Try
+            Dim process As New Process()
+            process.StartInfo.FileName = "netsh"
+            process.StartInfo.Arguments = "advfirewall reset"
+            process.StartInfo.UseShellExecute = False
+            process.StartInfo.RedirectStandardOutput = True
+            process.StartInfo.CreateNoWindow = True
+            process.Start()
+            Dim output As String = process.StandardOutput.ReadToEnd()
+            process.WaitForExit()
+            MessageBox.Show("Firewall has been reset to default settings." & vbCrLf & output)
+        Catch ex As Exception
+            MessageBox.Show("An error occurred: " & ex.Message)
+        End Try
+    End Sub
+    Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
+        ResetFirewall()
+    End Sub
+    Private Sub RemoveOutboundRule(ruleName As String)
+        Dim policyType As Type = Type.GetTypeFromProgID("HNetCfg.FwPolicy2")
+        Dim firewallPolicy As INetFwPolicy2 = DirectCast(Activator.CreateInstance(policyType), INetFwPolicy2)
+        For Each rule As INetFwRule In firewallPolicy.Rules
+            If rule.Name = ruleName AndAlso rule.Direction = NET_FW_RULE_DIRECTION_.NET_FW_RULE_DIR_OUT Then
+                firewallPolicy.Rules.Remove(rule.Name)
+                Exit For
+            End If
+        Next
+    End Sub
+    Private Sub Button4_Click(sender As Object, e As EventArgs) Handles Button4.Click
+        Me.Close()
+    End Sub
+    Private Sub Button5_Click(sender As Object, e As EventArgs) Handles Button5.Click
+        Me.WindowState = FormWindowState.Minimized
+    End Sub
+    Private Sub PingIPAddress(ipAddress As String)
+        Try
+            Dim pingSender As New Ping()
+            Dim reply As PingReply = pingSender.Send(ipAddress)
+
+            If reply.Status = IPStatus.Success Then
+                Label3.Text = $"Ping to {reply.Address} successful. RoundTrip time: {reply.RoundtripTime} ms"
+            Else
+                Label3.Text = $"Ping failed: {reply.Status}"
+            End If
+        Catch ex As Exception
+            Label3.Text = $"Error: {ex.Message}"
+        End Try
+    End Sub
+    Private Sub CheckBox14_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox14.CheckedChanged
+        If CheckBox14.Checked = False Then
+            ListBox1.Items.Add(CheckBox14.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox14.Text)
+        End If
+    End Sub
+    Private Sub CheckBox13_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox13.CheckedChanged
+        If CheckBox13.Checked = False Then
+            ListBox1.Items.Add(CheckBox13.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox13.Text)
+        End If
+    End Sub
+    Private Sub CheckBox12_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox12.CheckedChanged
+        If CheckBox12.Checked = False Then
+            ListBox1.Items.Add(CheckBox12.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox12.Text)
+        End If
+    End Sub
+    Private Sub CheckBox1_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox1.CheckedChanged
+        If CheckBox1.Checked = False Then
+            ListBox1.Items.Add(CheckBox1.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox1.Text)
+        End If
+    End Sub
+    Private Sub CheckBox2_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox2.CheckedChanged
+        If CheckBox2.Checked = False Then
+            ListBox1.Items.Add(CheckBox2.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox2.Text)
+        End If
+    End Sub
+    Private Sub CheckBox3_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox3.CheckedChanged
+        If CheckBox3.Checked = False Then
+            ListBox1.Items.Add(CheckBox3.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox3.Text)
+        End If
+    End Sub
+    Private Sub CheckBox4_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox4.CheckedChanged
+        If CheckBox4.Checked = False Then
+            ListBox1.Items.Add(CheckBox4.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox4.Text)
+        End If
+    End Sub
+    Private Sub CheckBox5_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox5.CheckedChanged
+        If CheckBox5.Checked = False Then
+            ListBox1.Items.Add(CheckBox5.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox5.Text)
+        End If
+    End Sub
+    Private Sub CheckBox6_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox6.CheckedChanged
+        If CheckBox6.Checked = False Then
+            ListBox1.Items.Add(CheckBox6.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox6.Text)
+        End If
+    End Sub
+    Private Sub CheckBox7_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox7.CheckedChanged
+        If CheckBox7.Checked = False Then
+            ListBox1.Items.Add(CheckBox7.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox7.Text)
+        End If
+    End Sub
+    Private Sub CheckBox8_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox8.CheckedChanged
+        If CheckBox8.Checked = False Then
+            ListBox1.Items.Add(CheckBox8.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox8.Text)
+        End If
+    End Sub
+    Private Sub CheckBox9_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox9.CheckedChanged
+        If CheckBox9.Checked = False Then
+            ListBox1.Items.Add(CheckBox9.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox9.Text)
+        End If
+    End Sub
+    Private Sub CheckBox10_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox10.CheckedChanged
+        If CheckBox10.Checked = False Then
+            ListBox1.Items.Add(CheckBox10.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox10.Text)
+        End If
+    End Sub
+    Private Sub CheckBox15_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox15.CheckedChanged
+        If CheckBox15.Checked = False Then
+            ListBox1.Items.Add(CheckBox15.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox15.Text)
+        End If
+    End Sub
+    Private Sub CheckBox11_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox11.CheckedChanged
+        If CheckBox11.Checked = False Then
+            ListBox1.Items.Add(CheckBox11.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox11.Text)
+        End If
+    End Sub
+    Private Sub CheckBox18_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox18.CheckedChanged
+        If CheckBox18.Checked = False Then
+            ListBox1.Items.Add(CheckBox18.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox18.Text)
+        End If
+    End Sub
+    Private Sub CheckBox16_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox16.CheckedChanged
+        If CheckBox16.Checked = False Then
+            ListBox1.Items.Add(CheckBox16.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox16.Text)
+        End If
+    End Sub
+    Private Sub CheckBox17_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox17.CheckedChanged
+        If CheckBox17.Checked = False Then
+            ListBox1.Items.Add(CheckBox17.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox17.Text)
+        End If
+    End Sub
+    Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
+        If Not IsRunAsAdmin() Then
+            Dim proc As New ProcessStartInfo()
+            proc.UseShellExecute = True
+            proc.WorkingDirectory = Environment.CurrentDirectory
+            proc.FileName = Application.ExecutablePath
+            proc.Verb = "runas"
+            Try
+                Process.Start(proc)
+                Application.Exit()
+            Catch ex As Exception
+                MessageBox.Show("This application requires elevated privileges to run.")
+            End Try
+        End If
+        CheckBox1.Checked = True
+        CheckBox2.Checked = True
+        CheckBox3.Checked = True
+        CheckBox4.Checked = True
+        CheckBox5.Checked = True
+        CheckBox6.Checked = True
+        CheckBox7.Checked = True
+        CheckBox8.Checked = True
+        CheckBox9.Checked = True
+        CheckBox10.Checked = True
+        CheckBox11.Checked = True
+        CheckBox12.Checked = True
+        CheckBox13.Checked = True
+        CheckBox14.Checked = True
+        CheckBox15.Checked = True
+        CheckBox16.Checked = True
+        CheckBox17.Checked = True
+        CheckBox18.Checked = True
+        CheckBox19.Checked = True
+        CheckBox20.Checked = True
+        CheckBox21.Checked = True
+        CheckBox22.Checked = True
+        CheckBox23.Checked = True
+        CheckBox24.Checked = True
+        CheckBox25.Checked = True
+        CheckBox26.Checked = True
+        CheckBox27.Checked = True
+        CheckBox28.Checked = True
+        CheckBox29.Checked = True
+        CheckBox30.Checked = True
+        CheckBox31.Checked = True
+        CheckBox32.Checked = True
+        CheckBox33.Checked = True
+        CheckBox34.Checked = True
+        CheckBox35.Checked = True
+        CheckBox36.Checked = True
+    End Sub
+    Private Function IsRunAsAdmin() As Boolean
+        Dim wi As WindowsIdentity = WindowsIdentity.GetCurrent()
+        Dim wp As WindowsPrincipal = New WindowsPrincipal(wi)
+        Return wp.IsInRole(WindowsBuiltInRole.Administrator)
+    End Function
+    Private Sub CheckBox20_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox20.CheckedChanged
+        If CheckBox20.Checked = False Then
+            ListBox1.Items.Add(CheckBox20.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox20.Text)
+        End If
+    End Sub
+
+    Private Sub CheckBox22_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox22.CheckedChanged
+        If CheckBox22.Checked = False Then
+            ListBox1.Items.Add(CheckBox22.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox22.Text)
+        End If
+    End Sub
+    Private Sub CheckBox25_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox25.CheckedChanged
+        If CheckBox25.Checked = False Then
+            ListBox1.Items.Add(CheckBox25.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox25.Text)
+        End If
+    End Sub
+
+    Private Sub CheckBox19_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox19.CheckedChanged
+        If CheckBox19.Checked = False Then
+            ListBox1.Items.Add(CheckBox19.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox19.Text)
+        End If
+    End Sub
+    Private Sub CheckBox21_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox21.CheckedChanged
+        If CheckBox21.Checked = False Then
+            ListBox1.Items.Add(CheckBox21.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox21.Text)
+        End If
+    End Sub
+
+    Private Sub CheckBox23_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox23.CheckedChanged
+        If CheckBox23.Checked = False Then
+            ListBox1.Items.Add(CheckBox23.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox23.Text)
+        End If
+    End Sub
+    Private Sub CheckBox24_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox24.CheckedChanged
+        If CheckBox24.Checked = False Then
+            ListBox1.Items.Add(CheckBox24.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox24.Text)
+        End If
+    End Sub
+
+    Private Sub CheckBox26_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox26.CheckedChanged
+        If CheckBox26.Checked = False Then
+            ListBox1.Items.Add(CheckBox26.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox26.Text)
+        End If
+    End Sub
+    Private Sub CheckBox27_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox27.CheckedChanged
+        If CheckBox27.Checked = False Then
+            ListBox1.Items.Add(CheckBox27.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox27.Text)
+        End If
+    End Sub
+
+    Private Sub CheckBox28_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox28.CheckedChanged
+        If CheckBox28.Checked = False Then
+            ListBox1.Items.Add(CheckBox28.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox28.Text)
+        End If
+    End Sub
+    Private Sub Button6_Click(sender As Object, e As EventArgs) Handles Button6.Click
+        OpenNatTCPinbound()
+        OpenNatTCPoutbound()
+        OpenNatUDPinbound()
+        OpenNatUDPoutbound()
+    End Sub
+    Private Sub OpenNatTCPinbound()
+        Dim ports As String() = {"3074", "3075", "27015-27030", "27036-27037"}
+        Dim fwPolicy2 As INetFwPolicy2 = CType(CreateObject("HNetCfg.FwPolicy2"), INetFwPolicy2)
+        For Each port As String In ports
+            Dim ruleName As String = "Allow Port " & port
+            Dim newRule As INetFwRule = CType(CreateObject("HNetCfg.FWRule"), INetFwRule)
+            newRule.Name = ruleName
+            newRule.Description = "Allow inbound traffic on port(s) " & port
+            newRule.Protocol = NET_FW_IP_PROTOCOL_.NET_FW_IP_PROTOCOL_TCP
+            newRule.LocalPorts = port
+            newRule.Direction = NET_FW_RULE_DIRECTION_.NET_FW_RULE_DIR_IN
+            newRule.Action = NET_FW_ACTION_.NET_FW_ACTION_ALLOW
+            newRule.Enabled = True
+            fwPolicy2.Rules.Add(newRule)
+        Next
+    End Sub
+    Private Sub OpenNatTCPoutbound()
+        Dim ports As String() = {"3074", "3075", "27015-27030", "27036-27037"}
+        Dim fwPolicy2 As INetFwPolicy2 = CType(CreateObject("HNetCfg.FwPolicy2"), INetFwPolicy2)
+        For Each port As String In ports
+            Dim ruleName As String = "Allow Port " & port
+            Dim newRule As INetFwRule = CType(CreateObject("HNetCfg.FWRule"), INetFwRule)
+            newRule.Name = ruleName
+            newRule.Description = "Allow inbound traffic on port(s) " & port
+            newRule.Protocol = NET_FW_IP_PROTOCOL_.NET_FW_IP_PROTOCOL_TCP
+            newRule.LocalPorts = port
+            newRule.Direction = NET_FW_RULE_DIRECTION_.NET_FW_RULE_DIR_OUT
+            newRule.Action = NET_FW_ACTION_.NET_FW_ACTION_ALLOW
+            newRule.Enabled = True
+            fwPolicy2.Rules.Add(newRule)
+        Next
+    End Sub
+    Private Sub OpenNatUDPinbound()
+        Dim ports As String() = {"3074", "4380", "27000-27036"}
+        Dim fwPolicy2 As INetFwPolicy2 = CType(CreateObject("HNetCfg.FwPolicy2"), INetFwPolicy2)
+        For Each port As String In ports
+            Dim ruleName As String = "Allow Port " & port
+            Dim newRule As INetFwRule = CType(CreateObject("HNetCfg.FWRule"), INetFwRule)
+            newRule.Name = ruleName
+            newRule.Description = "Allow inbound traffic on port(s) " & port
+            newRule.Protocol = NET_FW_IP_PROTOCOL_.NET_FW_IP_PROTOCOL_UDP
+            newRule.LocalPorts = port
+            newRule.Direction = NET_FW_RULE_DIRECTION_.NET_FW_RULE_DIR_IN
+            newRule.Action = NET_FW_ACTION_.NET_FW_ACTION_ALLOW
+            newRule.Enabled = True
+            fwPolicy2.Rules.Add(newRule)
+        Next
+    End Sub
+    Private Sub OpenNatUDPoutbound()
+        Dim ports As String() = {"3074", "4380", "27000-27036"}
+        Dim fwPolicy2 As INetFwPolicy2 = CType(CreateObject("HNetCfg.FwPolicy2"), INetFwPolicy2)
+        For Each port As String In ports
+            Dim ruleName As String = "Allow Port " & port
+            Dim newRule As INetFwRule = CType(CreateObject("HNetCfg.FWRule"), INetFwRule)
+            newRule.Name = ruleName
+            newRule.Description = "Allow inbound traffic on port(s) " & port
+            newRule.Protocol = NET_FW_IP_PROTOCOL_.NET_FW_IP_PROTOCOL_UDP
+            newRule.LocalPorts = port
+            newRule.Direction = NET_FW_RULE_DIRECTION_.NET_FW_RULE_DIR_OUT
+            newRule.Action = NET_FW_ACTION_.NET_FW_ACTION_ALLOW
+            newRule.Enabled = True
+            fwPolicy2.Rules.Add(newRule)
+        Next
+    End Sub
+    Private Sub CheckBox30_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox30.CheckedChanged
+        If CheckBox30.Checked = False Then
+            ListBox1.Items.Add(CheckBox30.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox30.Text)
+        End If
+    End Sub
+    Private Sub CheckBox31_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox31.CheckedChanged
+        If CheckBox31.Checked = False Then
+            ListBox1.Items.Add(CheckBox31.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox31.Text)
+        End If
+    End Sub
+
+    Private Sub CheckBox32_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox32.CheckedChanged
+        If CheckBox32.Checked = False Then
+            ListBox1.Items.Add(CheckBox32.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox32.Text)
+        End If
+    End Sub
+    Private Sub CheckBox33_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox33.CheckedChanged
+        If CheckBox33.Checked = False Then
+            ListBox1.Items.Add(CheckBox33.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox33.Text)
+        End If
+    End Sub
+    Private Sub CheckBox34_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox34.CheckedChanged
+        If CheckBox34.Checked = False Then
+            ListBox1.Items.Add(CheckBox34.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox34.Text)
+        End If
+    End Sub
+    Private Sub CheckBox35_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox35.CheckedChanged
+        If CheckBox35.Checked = False Then
+            ListBox1.Items.Add(CheckBox35.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox35.Text)
+        End If
+    End Sub
+    Private Sub CheckBox36_CheckedChanged(sender As Object, e As EventArgs) Handles CheckBox36.CheckedChanged
+        If CheckBox36.Checked = False Then
+            ListBox1.Items.Add(CheckBox36.Text)
+        Else
+            ListBox1.Items.Remove(CheckBox36.Text)
+        End If
+    End Sub
+    Private Sub Form1_FormClosing(sender As Object, e As FormClosingEventArgs) Handles MyBase.FormClosing
+        If TextBox1.Text = " << * Please Select Your cod.exe *" Then
+        Else
+            If Button3.Text = "START FENCING" Then
+                Button3.Text = "STOP FENCING"
+                Button3.BackColor = Color.Red
+                Try
+                    AddOutboundRule()
+                Catch ex As Exception
+                    MessageBox.Show(ErrorToString)
+                End Try
+            Else
+                If Button3.Text = "STOP FENCING" Then
+                    Button3.Text = "START FENCING"
+                    Button3.BackColor = Color.Green
+                    RemoveOutboundRule("Warzone Geo Fence")
+                End If
+            End If
+        End If
+    End Sub
+    Private Sub Button9_Click(sender As Object, e As EventArgs) Handles Button9.Click
+        Dim proc As New ProcessStartInfo()
+        proc.UseShellExecute = True
+        proc.WorkingDirectory = Environment.CurrentDirectory
+        proc.FileName = Application.ExecutablePath
+        proc.Verb = "runas"
+        Try
+            Process.Start(proc)
+        Catch ex As Exception
+            MessageBox.Show("This application requires elevated privileges to run.")
+        End Try
+    End Sub
+End Class
